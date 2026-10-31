@@ -45,12 +45,26 @@ class Position:
     x: int
     y: int
 
+@dataclass(frozen=True)
+class Direction:
+    x: int
+    y: int
+
+class Directions:
+    LEFT = Direction(-1, 0)
+    UP = Direction(0, -1)
+    RIGHT = Direction(1, 0)
+    DOWN = Direction(0, 1)
+
 class Snake:
-    def __init__(self, cellSize, maxCellY):
+    def __init__(self, cellSize, maxCellX, maxCellY):
         self.cellSize = cellSize # Dimension
         self.direction = None
 
-        startingCell = Position(3, maxCellY // 2)
+        self.maxCellX = maxCellX
+        self.maxCellY = maxCellY
+
+        startingCell = Position(20, self.maxCellY // 2)
         pixelX, pixelY = cellPixelPosition(startingCell.x, startingCell.y)
 
         self.cells = [startingCell] # Grid coordinates (snakeBodyCell)
@@ -58,38 +72,110 @@ class Snake:
         self.currentPositionPixels = [Position(pixelX, pixelY)] # Starting position (snakeBodyCurrentPixel)
         self.targetPositionPixels = [Position(pixelX, pixelY)] # Destination position (snakeBodyTargetPixel)
 
-def generateApplePosition(maxCellX, maxCellY, snake):
-    generate = True
-    while generate:
-        # Generate random cell to put apple in
-        appleCellX = random.randint(0, (maxCellX))
-        appleCellY = random.randint(0, (maxCellY))
+    def changeDirection(self, inputDirection):
+        direction = getattr(Directions, inputDirection)
 
-        # Check if new apple generates inside snake
-        if Position(appleCellX, appleCellY) in snake.cells:
-            continue
+        # Calculate new position of the top of the snake
+        oldheadCell = self.cells[0]
+        newHeadCellX = oldheadCell.x + direction.x
+        newHeadCellY = oldheadCell.y + direction.y
+        newHeadCell = Position(newHeadCellX, newHeadCellY)
+
+        # Update the cells the snake occupies to move it
+        self.cells.insert(0, newHeadCell)
+        self.cells.pop(-1)
+        
+        return
+
+    def checkBodyCollision(self, snakeHead):
+        # Checks if snake head collides with its body and returns True/False if a collission occurs
+        if len(self.cells) > 1:
+            snakeHead = self.cells[0]
+            if snakeHead in self.cells[1:len(snake.cells)]:
+                return True
+            else:
+                return False
+        return False
+
+    def checkBorderCollision(self, snakeHead):
+        # Check if the snake collides with the border and returns True/False if a collisison occurs
+        if snakeHead.x < 0 or snakeHead.x > self.maxCellX or \
+           snakeHead.y < 0 or snakeHead.y > self.maxCellY:
+            return True
         else:
-            generate = False
+            return False
 
-    applePixelX, applePixelY = cellPixelPosition(appleCellX, appleCellY)
+    def checkAppleCollision(self, snakeHead, appleCell):
+        if snakeHead == appleCell:
+            self.grow()
+            return True
+        return False
 
-    print('Apple X: ' + str(applePixelX) + ' Apple Y: ' + str(applePixelY) + ' Apple Cell X: ' + str(appleCellX) + ' Apple Cell Y: ' + str(appleCellY))
-    return applePixelX, applePixelY, appleCellX, appleCellY
+    def grow(self):
+        print('the snake is growing :/')
 
-colours = Colours()
-snake = Snake(cellSize, maxCellY)
+class Apple:
+    def __init__(self, maxCellX, maxCellY, snakeCells):
+        self.maxCellX = maxCellX
+        self.maxCellY = maxCellY
+
+        self.cell = None 
+        self.pixel = None
+        
+        self.generateApple(snakeCells)
+
+    def generateApple(self, snakeCells):
+        # Keep generating random cells for apple until it's not inside of snakes current position
+        while True:
+            cellX = random.randint(0, (self.maxCellX))
+            cellY = random.randint(0, (self.maxCellY))
+            cell = Position(cellX, cellY)
+
+            if cell not in snakeCells:
+                break
+
+        pixel = Position(*cellPixelPosition(cellX, cellY))
+
+        self.cell, self.pixel = cell, pixel
+        return cell, pixel
+
+# def generateApplePosition(maxCellX, maxCellY, snake):
+#     generate = True
+#     while generate:
+#         # Generate random cell to put apple in
+#         appleCellX = random.randint(0, (maxCellX))
+#         appleCellY = random.randint(0, (maxCellY))
+
+#         # Check if new apple generates inside snake
+#         if Position(appleCellX, appleCellY) in snake.cells:
+#             continue
+#         else:
+#             generate = False
+
+#     applePixelX, applePixelY = cellPixelPosition(appleCellX, appleCellY)
+
+#     print('Apple X: ' + str(applePixelX) + ' Apple Y: ' + str(applePixelY) + ' Apple Cell X: ' + str(appleCellX) + ' Apple Cell Y: ' + str(appleCellY))
+#     return applePixelX, applePixelY, appleCellX, appleCellY
+
+def initGame(cellSize, maxCellX, maxCellY):
+    colours = Colours()
+    snake = Snake(cellSize, maxCellX, maxCellY)
+    apple = Apple(maxCellX, maxCellY, snake.cells)
+
+    score = 0
+    runGameLogic = True
+
+    return colours, snake, apple, score, runGameLogic
+
+colours, snake, apple, score, runGameLogic = initGame(cellSize, maxCellX, maxCellY)
 
 appleDimnension = cellSize
-applePixelX, applePixelY, appleCellX, appleCellY = generateApplePosition(maxCellX, maxCellY, snake)
-
-score = 0
+# applePixelX, applePixelY, appleCellX, appleCellY = generateApplePosition(maxCellX, maxCellY, snake)
 
 lastMoveTime = 0
 moveInterval = 100 # In milliseconds
 
-runGameLogic = True
 running = True
-
 while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -107,10 +193,7 @@ while running:
 
                 if event.key == pg.K_SPACE and runGameLogic == False:
                     # Restart game
-                    snake = Snake(cellSize, maxCellY)
-                    applePixelX, applePixelY, appleCellX, appleCellY = generateApplePosition(maxCellX, maxCellY, snake)
-                    score = 0
-                    runGameLogic = True
+                    colours, snake, apple, score, runGameLogic = initGame(cellSize, maxCellX, maxCellY)
                     continue
 
     if runGameLogic:
@@ -125,117 +208,91 @@ while running:
                     currentPixel.x, currentPixel.y = targetPixel.x, targetPixel.y
 
             # Change direction
-            if snake.direction == 'LEFT':
-                # Clone snakeBodyCell so we have a list to copy old values from
-                snakeCellsCopy = [replace(bodyCell) for bodyCell in snake.cells] # Clone so we have a reference list (snakeBodyCellCopy)
-                snake.cells[0].x -= 1 # Update the head
-                for i in range(1, len(snake.cells)):
-                    snake.cells[i] = replace(snakeCellsCopy[i - 1]) # Update the body
-            elif snake.direction == 'UP':
-                snakeCellsCopy = [replace(bodyCell) for bodyCell in snake.cells]
-                snake.cells[0].y -= 1
-                for i in range(1, len(snake.cells)):
-                    snake.cells[i] = replace(snakeCellsCopy[i - 1])
-            elif snake.direction == 'RIGHT':
-                snakeCellsCopy = [replace(bodyCell) for bodyCell in snake.cells]
-                snake.cells[0].x += 1
-                for i in range(1, len(snake.cells)):
-                    snake.cells[i] = replace(snakeCellsCopy[i - 1])
-            elif snake.direction == 'DOWN':
-                snakeCellsCopy = [replace(bodyCell) for bodyCell in snake.cells]
-                snake.cells[0].y += 1
-                for i in range(1, len(snake.cells)):
-                    snake.cells[i] = replace(snakeCellsCopy[i - 1])
+            if snake.direction != None:
+                snake.changeDirection(snake.direction)
 
-            # Check if snake collides with borders
-            if snake.cells[0].x < 0 or snake.cells[0].x > maxCellX or \
-            snake.cells[0].y < 0 or snake.cells[0].y > maxCellY:
-                runGameLogic = False
-                continue
+            snakeHead = snake.cells[0]
 
-            # Check if snake collides with its body
-            if len(snake.cells) >= 2:
-                snakeHeadCell = snake.cells[0]
-                if snakeHeadCell in snake.cells[1:len(snake.cells)]:
-                    runGameLogic = False
-                    continue
+            # Check for collisions & update game state
+            runGameLogic = not snake.checkBodyCollision(snakeHead)
+            runGameLogic = not snake.checkBorderCollision(snakeHead)
 
+            if snake.checkAppleCollision(snakeHead, apple.cell):
+                score += 1 
+                apple.generateApple(snake.cells)
+        
             # Calculate new location of snake
             for bodyPart, targetPixel in zip(snake.cells, snake.targetPositionPixels):
                 targetPixel.x, targetPixel.y = cellPixelPosition(bodyPart.x, bodyPart.y)
 
             # Check if snake eats apple
-            if snake.cells[0].x == appleCellX and snake.cells[0].y == appleCellY:
-                score += 1
-                print("Score: " + str(score))
+            # if snakeHead.x == appleCellX and snakeHead.y == appleCellY:
+            #     score += 1
+            #     print("Score: " + str(score))
 
-                # Get base value for new body part
-                cell = replace(snake.cells[-1])
-                renderPositionPixel = replace(snake.renderPositionPixels[-1])
-                currentPositionPixel = replace(snake.currentPositionPixels[-1])
-                targetPositionPixel = replace(snake.targetPositionPixels[-1])
+            #     # Get base value for new body part
+            #     cell = replace(snake.cells[-1])
+            #     renderPositionPixel = replace(snake.renderPositionPixels[-1])
+            #     currentPositionPixel = replace(snake.currentPositionPixels[-1])
+            #     targetPositionPixel = replace(snake.targetPositionPixels[-1])
 
-                # Calculate cell and pixels for new body part and account for direction
-                if snake.direction == 'LEFT' and len(snake.cells)  == 1:
-                    cell.x += 1
-                    renderPositionPixel.x += cellSize
-                    currentPositionPixel.x += cellSize                     
-                elif snake.direction == 'UP' and len(snake.cells)  == 1:
-                    cell.y -= 1
-                    renderPositionPixel.y -= cellSize
-                    currentPositionPixel.y -= cellSize 
-                elif snake.direction == 'RIGHT' and len(snake.cells)  == 1:
-                    cell.x -= 1
-                    renderPositionPixel.x -= cellSize
-                    currentPositionPixel.x -= cellSize  
-                elif snake.direction == 'DOWN' and len(snake.cells)  == 1:
-                    cell.y += 1
-                    renderPositionPixel.y += cellSize
-                    currentPositionPixel.y += cellSize
-                else:
-                    # Snake has body components to compare direction
-                    comparisonCell = replace(snake.cells[-2])
-                    deltaX = comparisonCell.x - cell.x
-                    deltaY = comparisonCell.y - cell.y
+            #     # Calculate cell and pixels for new body part and account for direction
+            #     if snake.direction == 'LEFT' and len(snake.cells)  == 1:
+            #         cell.x += 1
+            #         renderPositionPixel.x += cellSize
+            #         currentPositionPixel.x += cellSize                     
+            #     elif snake.direction == 'UP' and len(snake.cells)  == 1:
+            #         cell.y -= 1
+            #         renderPositionPixel.y -= cellSize
+            #         currentPositionPixel.y -= cellSize 
+            #     elif snake.direction == 'RIGHT' and len(snake.cells)  == 1:
+            #         cell.x -= 1
+            #         renderPositionPixel.x -= cellSize
+            #         currentPositionPixel.x -= cellSize  
+            #     elif snake.direction == 'DOWN' and len(snake.cells)  == 1:
+            #         cell.y += 1
+            #         renderPositionPixel.y += cellSize
+            #         currentPositionPixel.y += cellSize
+            #     else:
+            #         # Snake has body components to compare direction
+            #         comparisonCell = replace(snake.cells[-2])
+            #         deltaX = comparisonCell.x - cell.x
+            #         deltaY = comparisonCell.y - cell.y
 
-                    if deltaY == -1:
-                        # Up
-                        cell.y -= 1
-                        renderPositionPixel.y -= cellSize
-                        currentPositionPixel.y -= cellSize
-                    elif deltaY == 1:
-                        # Down
-                        cell.y += 1
-                        renderPositionPixel.y += cellSize
-                        currentPositionPixel.y += cellSize
-                    elif deltaX == 1:
-                        # Left
-                        cell.x += 1
-                        renderPositionPixel.x += cellSize
-                        currentPositionPixel.x += cellSize     
-                    elif deltaX == -1:
-                        # Right
-                        cell.x -= 1
-                        renderPositionPixel.x -= cellSize
-                        currentPositionPixel.x -= cellSize  
+            #         if deltaY == -1:
+            #             # Up
+            #             cell.y -= 1
+            #             renderPositionPixel.y -= cellSize
+            #             currentPositionPixel.y -= cellSize
+            #         elif deltaY == 1:
+            #             # Down
+            #             cell.y += 1
+            #             renderPositionPixel.y += cellSize
+            #             currentPositionPixel.y += cellSize
+            #         elif deltaX == 1:
+            #             # Left
+            #             cell.x += 1
+            #             renderPositionPixel.x += cellSize
+            #             currentPositionPixel.x += cellSize     
+            #         elif deltaX == -1:
+            #             # Right
+            #             cell.x -= 1
+            #             renderPositionPixel.x -= cellSize
+            #             currentPositionPixel.x -= cellSize  
 
-                print('Before Growth: ' + ' cells: ' + str(snake.cells) + ' renderPositionPixels: ' + str(snake.renderPositionPixels) \
-                       + ' currentPositionPixels: ' + str(snake.currentPositionPixels) + ' targetPositionPixels: ' + str(snake.targetPositionPixels))
+            #     print('Before Growth: ' + ' cells: ' + str(snake.cells) + ' renderPositionPixels: ' + str(snake.renderPositionPixels) \
+            #            + ' currentPositionPixels: ' + str(snake.currentPositionPixels) + ' targetPositionPixels: ' + str(snake.targetPositionPixels))
                         
-                # Attach new body part to snake
-                # snakeBodyCell.insert(len(snakeBodyCell), positionCell)
-                snake.cells.append(cell)
-                # snakeBodyPixel.insert(len(snakeBodyPixel), positionPixel)
-                snake.renderPositionPixels.append(renderPositionPixel)
-                # snakeBodyCurrentPixel.insert(len(snakeBodyCurrentPixel), positionCurrentPixel)
-                snake.currentPositionPixels.append(currentPositionPixel)
-                # snakeBodyTargetPixel.insert(len(snakeBodyTargetPixel), positionTargetPixel)
-                snake.targetPositionPixels.append(targetPositionPixel)
+            #     # Attach new body part to snake
+            #     snake.cells.append(cell)
+            #     snake.renderPositionPixels.append(renderPositionPixel)
+            #     snake.currentPositionPixels.append(currentPositionPixel)
+            #     snake.targetPositionPixels.append(targetPositionPixel)
 
-                print('After Growth: ' + ' cells: ' + str(snake.cells) + ' renderPositionPixels: ' + str(snake.renderPositionPixels) \
-                       + ' currentPositionPixels: ' + str(snake.currentPositionPixels) + ' targetPositionPixels: ' + str(snake.targetPositionPixels))
+            #     print('After Growth: ' + ' cells: ' + str(snake.cells) + ' renderPositionPixels: ' + str(snake.renderPositionPixels) \
+            #            + ' currentPositionPixels: ' + str(snake.currentPositionPixels) + ' targetPositionPixels: ' + str(snake.targetPositionPixels))
 
-                applePixelX, applePixelY, appleCellX, appleCellY = generateApplePosition(maxCellX, maxCellY, snake)
+                # applePixelX, applePixelY, appleCellX, appleCellY = generateApplePosition(maxCellX, maxCellY, snake)
 
             lastMoveTime = currentTime
 
@@ -248,7 +305,7 @@ while running:
             renderPositionPixel.x = currentPositionPixel.x + (targetPositionPixel.x - currentPositionPixel.x) * animationProgress
             renderPositionPixel.y = currentPositionPixel.y + (targetPositionPixel.y - currentPositionPixel.y) * animationProgress
 
-        pg.draw.rect(screen, colours.crimson, (applePixelX, applePixelY, appleDimnension, appleDimnension)) # Render apple
+        pg.draw.rect(screen, colours.crimson, (apple.pixel.x, apple.pixel.y, appleDimnension, appleDimnension)) # Render apple
 
         for renderPositionPixel in snake.renderPositionPixels:
             pg.draw.rect(screen, colours.green, (renderPositionPixel.x, renderPositionPixel.y, snake.cellSize, snake.cellSize)) # Render snake
