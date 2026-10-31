@@ -1,5 +1,15 @@
+# Virtual environment
 venv/
+
+# Python cache
 __pycache__/
 *.py[cod]
+
+# Environment
 env/
 .env
+
+# PyInstaller Build
+build/
+dist/
+main.spec
