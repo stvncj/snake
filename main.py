@@ -94,10 +94,8 @@ class Snake:
         if len(self.cells) > 1:
             snakeHead = self.cells[0]
             if snakeHead in self.cells[1:len(self.cells)]:
-                print("Collision with body detected")
                 return True
             else:
-                print("No collision with body detected")
                 return False
         return False
 
@@ -150,6 +148,23 @@ class Snake:
         self.currentPositionPixels.append(currentPositionPixel)
         self.targetPositionPixels.append(targetPositionPixel)
 
+    def mapTargetPixels(self):
+        # Map cell grid coordinates to pixel coordinates
+        for bodyPart, targetPixel in zip(self.cells, self.targetPositionPixels):
+            targetPixel.x, targetPixel.y = cellPixelPosition(bodyPart.x, bodyPart.y)
+
+    def lerp(self, currentTick, tickEpoch, tickRate):
+        # Calculate frame delta
+        frameDeltaTime = (currentTick - tickEpoch) / tickRate
+        frameProgress = min(1.0, frameDeltaTime)
+
+        # Calculate where to render pixels using linear interpolation/LERP
+        for renderPositionPixel, targetPositionPixel, currentPositionPixel in zip(self.renderPositionPixels, self.targetPositionPixels, self.currentPositionPixels):
+            renderPositionPixel.x = currentPositionPixel.x + (targetPositionPixel.x - currentPositionPixel.x) * frameProgress
+            renderPositionPixel.y = currentPositionPixel.y + (targetPositionPixel.y - currentPositionPixel.y) * frameProgress
+
+        return frameProgress
+
 class Apple:
     def __init__(self, cellSize, maxCellX, maxCellY, snakeCells):
         self.maxCellX = maxCellX
@@ -188,8 +203,8 @@ def initGame(cellSize, maxCellX, maxCellY):
 
 colours, snake, apple, score, runGameLogic = initGame(cellSize, maxCellX, maxCellY)
 
-lastMoveTime = 0
-moveInterval = 100 # In milliseconds
+tickEpoch = 0
+tickRate = 100
 
 running = True
 while running:
@@ -217,8 +232,9 @@ while running:
         screen.fill(colours.black)
 
         # Detatch snake movement from frame rate
-        currentTime = pg.time.get_ticks()
-        if currentTime - lastMoveTime >= moveInterval:
+        currentTick = pg.time.get_ticks()
+        deltaTime = currentTick - tickEpoch
+        while deltaTime >= tickRate:
             # Update the current position
             for currentPixel, targetPixel in zip(snake.currentPositionPixels, snake.targetPositionPixels):
                     currentPixel.x, currentPixel.y = targetPixel.x, targetPixel.y
@@ -232,35 +248,34 @@ while running:
             # Check for collisions & update game state
             if snake.checkBodyCollision(snakeHead):
                 runGameLogic = False
+                tickEpoch += tickRate
+                deltaTime -= tickRate 
                 continue
 
             if snake.checkBorderCollision(snakeHead):
                 runGameLogic = False
+                tickEpoch += tickRate
+                deltaTime -= tickRate 
                 continue
 
             if snake.checkAppleCollision(snakeHead, apple.cell):
                 score += 1 
                 apple.generateApple(snake.cells)
-        
-            # Calculate new location of snake
-            for bodyPart, targetPixel in zip(snake.cells, snake.targetPositionPixels):
-                targetPixel.x, targetPixel.y = cellPixelPosition(bodyPart.x, bodyPart.y)
 
-            lastMoveTime = currentTime
+            # Update snake.targetPositionPixels
+            snake.mapTargetPixels() 
+
+            # Preserve time accuracy & update epoch
+            tickEpoch += tickRate
+            deltaTime -= tickRate 
 
         # Calculate how complete the animation is
-        animationProgress = (currentTime - lastMoveTime) / moveInterval
-        animationProgress = min(1.0, animationProgress)
-
-        # Calculate new pixel position using linear interpolation
-        for renderPositionPixel, targetPositionPixel, currentPositionPixel in zip(snake.renderPositionPixels, snake.targetPositionPixels, snake.currentPositionPixels):
-            renderPositionPixel.x = currentPositionPixel.x + (targetPositionPixel.x - currentPositionPixel.x) * animationProgress
-            renderPositionPixel.y = currentPositionPixel.y + (targetPositionPixel.y - currentPositionPixel.y) * animationProgress
-
-        pg.draw.rect(screen, colours.crimson, (apple.pixel.x, apple.pixel.y, apple.cellSize, apple.cellSize)) # Render apple
+        snake.lerp(currentTick, tickEpoch, tickRate)
 
         for renderPositionPixel in snake.renderPositionPixels:
             pg.draw.rect(screen, colours.green, (renderPositionPixel.x, renderPositionPixel.y, snake.cellSize, snake.cellSize)) # Render snake
+
+        pg.draw.rect(screen, colours.crimson, (apple.pixel.x, apple.pixel.y, apple.cellSize, apple.cellSize)) # Render apple
 
         # Score text
         scoreMarginPixelX, scoreMarginPixelY = 15, 15
