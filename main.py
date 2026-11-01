@@ -277,8 +277,6 @@ while running:
         pg.draw.rect(screen, colours.crimson, (apple.pixel.x, apple.pixel.y, apple.cellSize, apple.cellSize)) # Render apple
 
         # Score text
-        # scoreMarginPixelX, scoreMarginPixelY = 15, 15
-
         # Set text surface
         scoreSurface = scoreFont.render('Score: ', True, colours.white)
         scoreNumSurface = scoreFont.render(str(score), True, colours.blue)
@@ -331,42 +329,6 @@ while running:
 
         screen.blit(scoreSurface, (scoreRect))
         screen.blit(scoreNumSurface, (scoreNumRect))
-
-        # Render 'Game Over' 
-        # gameOverTextSurface = gameOverFont.render('Game Over', True, colours.white)
-        # gameOverTextPixelX = windowWidth // 2 - gameOverTextSurface.get_width() // 2
-        # gameOverTextPixelY = 0 + windowHeight * 0.15 
-        # screen.blit(gameOverTextSurface, (gameOverTextPixelX, gameOverTextPixelY))
-
-        # Render press INPUT to replay with INPUT in crimson
-        # pressTextSurface = gameOverFont.render('Press ', True, colours.white)
-        # spaceTextSurface = gameOverFont.render('space ', True, colours.crimson)
-        # replayTextSurface = gameOverFont.render('to replay...', True, colours.white)
-
-        # pressToReplayTextPixelY = windowHeight // 2 - pressTextSurface.get_height() // 2
-
-        # pressTextPixelX = windowWidth // 2 - (pressTextSurface.get_width() + spaceTextSurface.get_width() + replayTextSurface.get_width()) // 2
-        # spaceTextPixelX = windowWidth // 2 - ((pressTextSurface.get_width() + spaceTextSurface.get_width() + replayTextSurface.get_width()) // 2) \
-                                                # + pressTextSurface.get_width()
-        # replayTextPixelX = windowWidth // 2 - ((pressTextSurface.get_width() + spaceTextSurface.get_width() + replayTextSurface.get_width()) // 2) \
-                                                # + pressTextSurface.get_width() + spaceTextSurface.get_width()
-
-        # screen.blit(pressTextSurface, (pressTextPixelX, pressToReplayTextPixelY))
-        # screen.blit(spaceTextSurface, (spaceTextPixelX, pressToReplayTextPixelY))
-        # screen.blit(replayTextSurface, (replayTextPixelX, pressToReplayTextPixelY))
-# 
-        # Render score
-        # scoreTextSurface = gameOverFont.render('Your Score: ', True, colours.white)
-        # scoreNumTextSurface = gameOverFont.render(str(score), True, colours.blue)
-# 
-        # scoreTextPixelY = 0 + windowHeight * 0.75
-# 
-        # scoreTextPixelX = windowWidth // 2 - (scoreTextSurface.get_width() + scoreNumTextSurface.get_width()) // 2
-        # scoreNumTextPixelX = windowWidth // 2 - ((scoreTextSurface.get_width() + scoreNumTextSurface.get_width()) // 2) \
-                                                # + scoreTextSurface.get_width()
-        # 
-        # screen.blit(scoreTextSurface, (scoreTextPixelX, scoreTextPixelY))
-        # screen.blit(scoreNumTextSurface, (scoreNumTextPixelX, scoreTextPixelY))
     
     pg.display.update()
     clock.tick(100)
