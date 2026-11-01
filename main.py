@@ -205,7 +205,6 @@ colours, snake, apple, score, runGameLogic = initGame(cellSize, maxCellX, maxCel
 
 tickEpoch = 0
 tickRate = 100
-
 running = True
 while running:
     for event in pg.event.get():
@@ -248,15 +247,15 @@ while running:
             # Check for collisions & update game state
             if snake.checkBodyCollision(snakeHead):
                 runGameLogic = False
-                tickEpoch += tickRate
+                tickEpoch = 0
                 deltaTime -= tickRate 
-                continue
+                break
 
             if snake.checkBorderCollision(snakeHead):
                 runGameLogic = False
-                tickEpoch += tickRate
+                tickEpoch = 0
                 deltaTime -= tickRate 
-                continue
+                break
 
             if snake.checkAppleCollision(snakeHead, apple.cell):
                 score += 1 
